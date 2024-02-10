@@ -20,7 +20,9 @@ export default function StatsCard(props) {
       <div className='relative flex flex-col flex-none justify-center hover-trigger'>
         <h3 className='text-lg font-semibold my-1 uppercase text-center'>{props.title}</h3>
         <div className="text-2xl font-bold text-center">
+          <div className={props.ready ? 'underline hover:cursor-pointer' : '' } onClick={props.onClick}>
           {props.value}
+          </div>
         </div>
         {props.children && (
           <div className='absolute invisible -right-[10em] z-10 opacity-0 transition-opacity ease-in-out duration-300 flex flex-col p-2 hover-target bg-white border border-gray-200'>

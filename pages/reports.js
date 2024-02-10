@@ -6,6 +6,8 @@ import useSWR from 'swr'
 import CacheUsageGraph from '../components/cacheUsageGraph'
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useQueryState } from '../components/useQueryState';
+import ProjectModel from '../components/projectModel'
+import excludePatternsList from '../data/excludePatterns.json'
 
 
 function fetcher(url) {
@@ -22,7 +24,7 @@ function fetcher(url) {
  * 
  * @return Formatted string.
  */
- function humanFileSize(bytes, si = true, dp = 1) {
+function humanFileSize(bytes, si = true, dp = 1) {
   const thresh = si ? 1000 : 1024;
 
   if (Math.abs(bytes) < thresh) {
@@ -84,7 +86,7 @@ function createPeriods() {
 
     // convert date to unix epoch
     var endEpoch = date.getTime() / 1000;
-    console.log("End date:" +  date.toLocaleString('default', { timeZone: 'UTC' }));
+    console.log("End date:" + date.toLocaleString('default', { timeZone: 'UTC' }));
 
     var period = { month: month, year: date.getUTCFullYear(), label: englishMonth + " " + date.getUTCFullYear(), value: [startEpoch, endEpoch] };
     periods.push(period);
@@ -97,6 +99,7 @@ export default function Reports() {
   const periods = useMemo(() => createPeriods(), []);
   //const [period, setPeriod] = useState(periods[0].value.toString());
   const [periodState, setPeriod] = useQueryState("period", periods[0].value.toString());
+  const [projectModelOpen, setProjectModelOpen] = useState(false);
 
   // Calculate the number of caches:
   const numCachesData = useSWR('/api/getNumCaches', fetcher)
@@ -112,7 +115,7 @@ export default function Reports() {
   //console.log(periodState);
   const [start, end] = periodState.split(",").map(x => parseInt(x));
   const cacheUsage = useSWR('/api/cacheUsage?start=' + start + '&end=' + end, fetcher);
-  
+
   // Add up all the days
   let totalUsage = 0;
   if (cacheUsage.data) {
@@ -129,6 +132,18 @@ export default function Reports() {
   const perProjectUsage = useSWR('/api/perProjectUsage?start=' + start + '&end=' + end, fetcher);
   let totalProjects = 0;
   if (perProjectUsage.data) {
+    // Loop through the exclude patterns and remove them from the total
+    for (const pattern of excludePatternsList.excludePatterns) {
+      // excludePatter is a regex
+      for (var key in perProjectUsage.data.directories) {
+        if (key.match(pattern)) {
+          console.log("Deleting key:" + key);
+          // Remove the project from the perProjectUsage.data
+          delete perProjectUsage.data.directories[key];
+          //totalProjects--;
+        }
+      }
+    }
     totalProjects = Object.keys(perProjectUsage.data.directories).length;
   } else if (!perProjectUsage.data && !perProjectUsage.error) {
     totalProjects = "Loading...";
@@ -143,7 +158,7 @@ export default function Reports() {
     setPeriod(period);
   }
 
-  
+
   const date = new Date(start * 1000);
   const month = date.toLocaleString('default', { month: 'long', timeZone: 'UTC' });
   const year = date.getFullYear();
@@ -158,7 +173,7 @@ export default function Reports() {
         filename: 'report.pdf',
         image: { type: 'png', quality: 1.0 },
         html2canvas: { dpi: 75, scale: 2, letterRendering: true },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait', compressPDF: true}
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait', compressPDF: true }
       };
       html2pdf.default().from(element).set(opt).toPdf().get('pdf').then((pdf) => {
         console.log("Adding footer to PDF")
@@ -174,10 +189,14 @@ export default function Reports() {
           pdf.setTextColor(0);
           // this example gets internal pageSize just as an example to locate your text near the borders in case you want to do something like "Page 3 out of 4"
           pdf.text(0.1,
-            pdf.internal.pageSize.getHeight()-0.1, 'Generated from ' + window.location.href);
+            pdf.internal.pageSize.getHeight() - 0.1, 'Generated from ' + window.location.href);
         }
       }).save();
     });
+  }
+
+  function openProjectModel() {
+    setProjectModelOpen(true);
   }
 
   return (
@@ -206,7 +225,7 @@ export default function Reports() {
           </button>
         </div>
         <div className='grid grid-cols-3 mt-8 justify-center divide-x-2 lg:max-w-5xl mx-auto'>
-          <StatsCard icon={<BriefcaseIcon className='h-7 w-7 text-lime-400 mr-1 my-1' />} title='Projects' value={totalProjects} />
+          <StatsCard icon={<BriefcaseIcon className='h-7 w-7 text-lime-400 mr-1 my-1' />} title='Projects' value={totalProjects} ready={perProjectUsage.data ? true : false} onClick={openProjectModel} />
           <StatsCard icon={<BriefcaseIcon className='h-7 w-7 text-lime-400 mr-1 my-1' />} title='Caches' value={numCaches}>
           </StatsCard>
           <StatsCard icon={<BriefcaseIcon className='h-7 w-7 text-lime-400 mr-1 my-1' />} title='Transferred' value={totalUsage} />
@@ -214,6 +233,7 @@ export default function Reports() {
         <div className='flex justify-items-center place-content-center mt-8'>
           <CacheUsageGraph timeperiod={periodState} />
         </div>
+        <ProjectModel open={projectModelOpen} setOpen={setProjectModelOpen} projects={perProjectUsage && perProjectUsage.data && perProjectUsage.data.directories ? perProjectUsage.data.directories : null} />
       </div>
     </>
   )
