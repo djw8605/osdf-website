@@ -1,4 +1,5 @@
 import BriefcaseIcon from '@heroicons/react/outline/BriefcaseIcon';
+import { useEffect } from 'react';
 
 
 /**
@@ -58,11 +59,26 @@ export default function ProjectModel({ open, setOpen, projects }) {
   // Sort by usage
   projectsArray.sort((a, b) => b[1] - a[1]);
 
+  // Capture the escape key being pressed
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      setOpen(false);
+    }
+  }
+
+  // Add event listener for escape key
+  useEffect(() => {
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+    }
+  }, []);
+
   return (
     <>
       <div className={`fixed z-10 inset-0 overflow-y-auto ${open ? 'block' : 'hidden'}`}>
         <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-          <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+          <div className="fixed inset-0 transition-opacity" onClick={() => {setOpen(false)}} aria-hidden="true">
             <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
           </div>
           <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
@@ -77,22 +93,28 @@ export default function ProjectModel({ open, setOpen, projects }) {
                     <table className="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
                       <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                         <tr>
-                          <th scope="col" className="px-6 py-3">
+                          <th scope="col" className="px-1 py-3">
+                            Rank
+                          </th>
+                          <th scope="col" className="px-2 py-3">
                             Project
                           </th>
-                          <th scope="col" className="px-6 py-3">
+                          <th scope="col" className="px-2 py-3">
                             Usage
                           </th>
                         </tr>
                       </thead>
                       <tbody>
-                        {projectsArray.map(([project, usage]) => (
+                        {projectsArray.map(([project, usage],index) => (
 
                             <tr key={project} className="px-6 odd:bg-white odd:dark:bg-gray-900 even:bg-gray-50 even:dark:bg-gray-800 border-b dark:border-gray-700">
-                              <th scope="row" className='px-6'>
+                              <th scope="row" className='px-1'>
+                                {index + 1}
+                              </th>
+                              <th scope="row" className='px-2'>
                                 {project}
                               </th>
-                              <td className="px-6">
+                              <td className="px-2">
                                 {humanFileSize(usage)}
                               </td>
                             </tr>
