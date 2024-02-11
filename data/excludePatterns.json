@@ -1,0 +1,7 @@
+{
+  "excludePatterns": [
+    ".*\\.well-known/.*",
+    "/igwn/ligo/README",
+    "/igwn/shared/README"
+  ]
+}
